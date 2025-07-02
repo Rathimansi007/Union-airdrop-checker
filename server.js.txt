@@ -1,0 +1,36 @@
+const express = require("express");
+const cors = require("cors");
+const fs = require("fs");
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+app.use(express.static("public"));
+
+const transfers = JSON.parse(fs.readFileSync("transfers.json", "utf8"));
+
+app.post("/airdrop", (req, res) => {
+  const { wallet } = req.body;
+  if (!wallet || !wallet.startsWith("0x")) {
+    return res.status(400).json({ success: false, error: "Invalid wallet address" });
+  }
+
+  const activity = transfers[wallet.toLowerCase()];
+  if (!activity) {
+    return res.json({ success: true, wallet, estimatedU: 0, activityArray: [], estimatedVolumeUSD: 0, factors: {} });
+  }
+
+  const estimatedU = activity.estimatedU || 0;
+
+  res.json({
+    success: true,
+    wallet,
+    estimatedU,
+    activityArray: activity.tokens || [],
+    estimatedVolumeUSD: activity.estimatedVolumeUSD || 0,
+    factors: activity.factors || {}
+  });
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log("Server started on " + PORT));

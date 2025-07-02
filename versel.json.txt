@@ -1,0 +1,5 @@
+{
+  "rewrites": [
+    { "source": "/airdrop", "destination": "/api/airdrop.js" }
+  ]
+}
