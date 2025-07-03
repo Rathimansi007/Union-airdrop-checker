@@ -1,23 +1,15 @@
+// server.js
 const express = require("express");
 const cors = require("cors");
 const fetch = require("node-fetch");
-const path = require("path");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
+app.use(express.static("public"));
 
-// Serve index.html manually from root folder
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "index.html"));
-});
-
-// Serve static assets (like logo, CSS, etc.) from root
-app.use(express.static(__dirname));
-
-// Handle POST request to /airdrop
 app.post("/airdrop", async (req, res) => {
   const { wallet } = req.body;
 
@@ -27,16 +19,18 @@ app.post("/airdrop", async (req, res) => {
 
   try {
     const query = `
-      query {
-        wallet(address: "${wallet}") {
-          estimatedU
-          factors {
-            volumeScore
-            diversityScore
-            interactionScore
-            holdingScore
-            cosmosBonus
-            unionUserBonus
+      query GetTransfers {
+        v2_transfers(args: {
+          p_addresses_canonical: ["${wallet}"],
+          p_limit: 100
+        }) {
+          base_amount
+          base_token_meta {
+            representations {
+              name
+              symbol
+              decimals
+            }
           }
         }
       }
@@ -49,24 +43,50 @@ app.post("/airdrop", async (req, res) => {
     });
 
     const json = await response.json();
-    const data = json.data.wallet;
+    const transfers = json.data?.v2_transfers || [];
 
-    if (!data) {
-      return res.status(404).json({ success: false, error: "Wallet not found on Union." });
+    if (!transfers.length) {
+      return res.status(404).json({ success: false, error: "No Union transfers found for this wallet." });
     }
 
-    // Optional: Debank/alternative token fetch logic can go here
+    // Group by token symbol
+    const tokenMap = {};
+    for (const tx of transfers) {
+      const symbol = tx.base_token_meta.representations[0]?.symbol || "UNKNOWN";
+      const decimals = tx.base_token_meta.representations[0]?.decimals || 18;
+      const normalizedAmount = Number(tx.base_amount) / (10 ** decimals);
+      if (!tokenMap[symbol]) {
+        tokenMap[symbol] = { symbol, amount: 0 };
+      }
+      tokenMap[symbol].amount += normalizedAmount;
+    }
+
+    const activityArray = Object.values(tokenMap).map(token => ({
+      symbol: token.symbol,
+      amount: Number(token.amount.toFixed(3)),
+      usd: Number((token.amount * 1).toFixed(2)) // Placeholder $1 each
+    }));
+
+    const estimatedVolumeUSD = activityArray.reduce((sum, t) => sum + t.usd, 0);
+
+    const factors = {
+      volumeScore: Math.min(100, Math.round(estimatedVolumeUSD / 100)),
+      diversityScore: Math.min(100, activityArray.length * 10),
+      interactionScore: Math.min(100, transfers.length),
+      holdingScore: 10,
+      cosmosBonus: 0,
+      unionUserBonus: 0
+    };
+
+    const estimatedU = Object.values(factors).reduce((sum, v) => sum + v, 0);
 
     res.json({
       success: true,
       wallet,
-      estimatedU: data.estimatedU,
-      factors: data.factors,
-      activityArray: [
-        { symbol: "ETH", amount: 1.5, usd: 4500 },
-        { symbol: "USDC", amount: 1200, usd: 1200 },
-      ],
-      estimatedVolumeUSD: 6789
+      activityArray,
+      estimatedVolumeUSD,
+      factors,
+      estimatedU
     });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -74,5 +94,5 @@ app.post("/airdrop", async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`✅ Server running at http://localhost:${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
