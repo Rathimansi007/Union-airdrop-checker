@@ -5,12 +5,13 @@ const path = require("path");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Serve index.html from root (not /public)
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "index.html")); // ✅ changed from public/index.html
-});
-
+// Serve static files (like index.html in root)
+app.use(express.static(path.join(__dirname)));
 app.use(express.json());
+
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "index.html"));
+});
 
 app.post("/api/check", async (req, res) => {
   try {
@@ -35,16 +36,16 @@ app.post("/api/check", async (req, res) => {
       }),
     });
 
-    const { data } = await response.json();
-    const scores = data?.v2_scores_by_pk;
+    const result = await response.json();
+    const scores = result?.data?.v2_scores_by_pk;
 
     if (!scores) {
       return res.status(404).json({ error: "Wallet not found on Union." });
     }
 
     res.json({ scores });
-  } catch (err) {
-    console.error(err);
+  } catch (error) {
+    console.error("API error:", error.message);
     res.status(500).json({ error: "Failed to check eligibility" });
   }
 });
