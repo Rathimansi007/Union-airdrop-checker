@@ -8,12 +8,12 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// ✅ Serve static frontend files from "public" directory
-app.use(express.static(path.join(__dirname, "public")));
+// ✅ Serve static files from root (not "public")
+app.use(express.static(__dirname));
 
 // ✅ Serve index.html at root
 app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
+  res.sendFile(path.join(__dirname, "index.html"));
 });
 
 // ✅ Airdrop checker API route
@@ -24,7 +24,7 @@ app.post("/airdrop", async (req, res) => {
     return res.status(400).json({ success: false, error: "Invalid wallet address" });
   }
 
-  // Simulated airdrop logic — replace this with real logic or API call
+  // Simulated response
   const fakeData = {
     success: true,
     wallet,
@@ -48,5 +48,5 @@ app.post("/airdrop", async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`✅ Server running on http://localhost:${PORT}`);
+  console.log(`✅ Server is live at http://localhost:${PORT}`);
 });
