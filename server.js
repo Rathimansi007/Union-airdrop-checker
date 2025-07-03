@@ -1,4 +1,3 @@
-// server.js
 const express = require("express");
 const cors = require("cors");
 const fetch = require("node-fetch");
@@ -39,7 +38,9 @@ app.post("/airdrop", async (req, res) => {
     });
 
     const json = await response.json();
-    const data = json.data.v2_scores_by_pk;
+
+    // Safely access the result
+    const data = json?.data?.v2_scores_by_pk;
 
     if (!data) {
       return res.status(404).json({ success: false, error: "Wallet not found on Union." });
@@ -57,11 +58,12 @@ app.post("/airdrop", async (req, res) => {
         cosmosBonus: data.cosmos_bonus,
         unionUserBonus: data.union_user_bonus
       },
-      activityArray: [], // You can add Debank-based balances here later
-      estimatedVolumeUSD: 0 // Placeholder
+      activityArray: [],
+      estimatedVolumeUSD: 0
     });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    console.error("❌ Error querying Union API:", err);
+    res.status(500).json({ success: false, error: "Server error. Please try again later." });
   }
 });
 
