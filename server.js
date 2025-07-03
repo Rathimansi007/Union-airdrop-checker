@@ -1,26 +1,27 @@
-const express = require('express');
-const fetch = require('node-fetch');
-const path = require('path');
+const express = require("express");
+const fetch = require("node-fetch");
+const path = require("path");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Serve static files (your HTML, CSS, JS)
-app.use(express.static(path.join(__dirname, 'public')));
+// Serve index.html from root (not /public)
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "index.html")); // ✅ changed from public/index.html
+});
 
-// API route for checking wallet
-app.get('/api/check', async (req, res) => {
-  const wallet = req.query.wallet?.toLowerCase();
+app.use(express.json());
 
-  if (!wallet) {
-    return res.status(400).json({ error: 'Wallet address is required' });
-  }
-
+app.post("/api/check", async (req, res) => {
   try {
-    const query = {
-      query: `
-        query GetScore($address: String!) {
-          v2_scores_by_pk(address: $address) {
+    const { wallet } = req.body;
+
+    const response = await fetch("https://graphql.union.build/v1/graphql", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        query: `query {
+          v2_scores_by_pk(address: "${wallet.toLowerCase()}") {
             address
             estimated_u
             volume_score
@@ -30,35 +31,24 @@ app.get('/api/check', async (req, res) => {
             cosmos_bonus
             union_user_bonus
           }
-        }
-      `,
-      variables: { address: wallet }
-    };
-
-    const response = await fetch('https://graphql.union.build/v1/graphql', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(query)
+        }`,
+      }),
     });
 
-    const data = await response.json();
+    const { data } = await response.json();
+    const scores = data?.v2_scores_by_pk;
 
-    if (!data.data || !data.data.v2_scores_by_pk) {
-      return res.status(404).json({ error: 'Wallet not found on Union.' });
+    if (!scores) {
+      return res.status(404).json({ error: "Wallet not found on Union." });
     }
 
-    res.json({ data: data.data.v2_scores_by_pk });
-  } catch (error) {
-    console.error('Error fetching Union data:', error);
-    res.status(500).json({ error: 'Failed to fetch Union data' });
+    res.json({ scores });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to check eligibility" });
   }
 });
 
-// Default route (optional fallback if HTML isn't served correctly)
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
 app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
