@@ -6,7 +6,7 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 
-// ✅ API route must come BEFORE static serving
+// ✅ API route to check airdrop eligibility
 app.post("/api/check", async (req, res) => {
   try {
     const { wallet } = req.body;
@@ -47,19 +47,19 @@ app.post("/api/check", async (req, res) => {
   }
 });
 
-// ✅ Serve index.html and other static files
+// ✅ Serve static files from current folder
 app.use(express.static(path.join(__dirname)));
 
-// ✅ Explicit root handler
+// ✅ Serve index.html at root
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
 });
 
-// ✅ Catch-all for other routes — make sure this is LAST
+// ✅ 404 fallback
 app.use((req, res) => {
   res.status(404).json({ error: "Route not found" });
 });
 
 app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`Server running at http://localhost:${PORT}`);
 });
