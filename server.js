@@ -6,10 +6,7 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 
-// ✅ Serve static files like index.html and frontend assets
-app.use(express.static(path.join(__dirname)));
-
-// ✅ API route for checking wallet eligibility
+// ✅ API route must come BEFORE static serving
 app.post("/api/check", async (req, res) => {
   try {
     const { wallet } = req.body;
@@ -36,7 +33,6 @@ app.post("/api/check", async (req, res) => {
     });
 
     const result = await response.json();
-
     const scores = result?.data?.v2_scores_by_pk;
 
     if (!scores) {
@@ -51,17 +47,19 @@ app.post("/api/check", async (req, res) => {
   }
 });
 
-// ✅ Serve index.html on root request
+// ✅ Serve index.html and other static files
+app.use(express.static(path.join(__dirname)));
+
+// ✅ Explicit root handler
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
 });
 
-// ✅ Fallback for unmatched routes
+// ✅ Catch-all for other routes — make sure this is LAST
 app.use((req, res) => {
-  res.status(404).send("Page not found");
+  res.status(404).json({ error: "Route not found" });
 });
 
-// ✅ Start server
 app.listen(PORT, () => {
-  console.log(`Server listening on http://localhost:${PORT}`);
+  console.log(`Server running on http://localhost:${PORT}`);
 });
