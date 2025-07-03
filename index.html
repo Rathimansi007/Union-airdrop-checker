@@ -94,7 +94,7 @@
       shareLink.style.display = "none";
 
       try {
-        const response = await fetch("/api/airdrop", {  // ✅ Use relative API route
+        const response = await fetch("/airdrop", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ wallet })
