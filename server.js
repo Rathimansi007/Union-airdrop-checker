@@ -1,4 +1,4 @@
-// Updated server.js
+// server.js
 const express = require("express");
 const cors = require("cors");
 const fetch = require("node-fetch");
@@ -8,7 +8,7 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static(__dirname)); // serve index.html in root
+app.use(express.static("public"));
 
 app.post("/airdrop", async (req, res) => {
   const { wallet } = req.body;
@@ -18,8 +18,8 @@ app.post("/airdrop", async (req, res) => {
   }
 
   try {
-    // 1. Union Airdrop Query
-    const unionQuery = `
+    // Get score data from Union
+    const scoreQuery = `
       query {
         v2_scores_by_pk(address: "${wallet.toLowerCase()}") {
           estimatedU
@@ -33,64 +33,90 @@ app.post("/airdrop", async (req, res) => {
       }
     `;
 
-    const unionRes = await fetch("https://graphql.union.build/v1/graphql", {
+    const scoreResponse = await fetch("https://graphql.union.build/v1/graphql", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query: unionQuery }),
+      body: JSON.stringify({ query: scoreQuery })
     });
 
-    const unionJson = await unionRes.json();
-    const unionData = unionJson?.data?.v2_scores_by_pk;
+    const scoreJson = await scoreResponse.json();
+    const scoreData = scoreJson.data?.v2_scores_by_pk;
 
-    if (!unionData) {
+    if (!scoreData) {
       return res.status(404).json({ success: false, error: "Wallet not found on Union." });
     }
 
-    // 2. Get Token Balances from DeBank (EVM chains only)
-    const debankRes = await fetch(`https://pro-openapi.debank.com/v1/user/token_list?id=${wallet}&is_all=true`, {
-      headers: {
-        accept: "application/json",
-        // You need an API key from DeBank if rate-limiting applies:
-        // 'AccessKey': 'your_api_key_here'
+    // Get token transfer data from Union
+    const transferQuery = `
+      query {
+        v2_transfers(args: {
+          p_limit: 50,
+          p_addresses_canonical: ["${wallet.toLowerCase()}"]
+        }) {
+          base_amount
+          base_token_meta {
+            representations {
+              symbol
+              decimals
+            }
+          }
+        }
       }
+    `;
+
+    const transferResponse = await fetch("https://graphql.union.build/v1/graphql", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query: transferQuery })
     });
 
-    const tokenList = await debankRes.json();
+    const transferJson = await transferResponse.json();
+    const transfers = transferJson.data?.v2_transfers || [];
 
-    // Filter top tokens (optional) and build activity array
-    const activityArray = tokenList
-      .filter(t => t.price > 0 && t.amount > 0)
-      .map(t => ({
-        symbol: t.symbol,
-        amount: parseFloat(t.amount.toFixed(3)),
-        usd: parseFloat((t.amount * t.price).toFixed(2))
-      }))
-      .sort((a, b) => b.usd - a.usd)
-      .slice(0, 5); // top 5 tokens
+    const tokenTotals = {}; // symbol: { amount, usd (mocked $1 per unit) }
 
-    const estimatedVolumeUSD = activityArray.reduce((sum, t) => sum + t.usd, 0);
+    transfers.forEach((tx) => {
+      const symbol = tx.base_token_meta.representations[0].symbol || "UNKNOWN";
+      const decimals = tx.base_token_meta.representations[0].decimals || 18;
+      const realAmount = parseFloat(tx.base_amount) / Math.pow(10, decimals);
+
+      if (!tokenTotals[symbol]) {
+        tokenTotals[symbol] = { amount: 0, usd: 0 };
+      }
+
+      tokenTotals[symbol].amount += realAmount;
+      tokenTotals[symbol].usd += realAmount * 1; // assume $1 per token
+    });
+
+    const activityArray = Object.keys(tokenTotals).map((symbol) => ({
+      symbol,
+      amount: tokenTotals[symbol].amount.toFixed(2),
+      usd: tokenTotals[symbol].usd.toFixed(2)
+    }));
+
+    const estimatedVolumeUSD = activityArray.reduce((sum, token) => sum + parseFloat(token.usd), 0);
 
     res.json({
       success: true,
       wallet,
-      estimatedU: unionData.estimatedU,
+      estimatedU: scoreData.estimatedU,
       factors: {
-        volumeScore: unionData.volumeScore,
-        diversityScore: unionData.diversityScore,
-        interactionScore: unionData.interactionScore,
-        holdingScore: unionData.holdingScore,
-        cosmosBonus: unionData.cosmosBonus,
-        unionUserBonus: unionData.unionUserBonus
+        volumeScore: scoreData.volumeScore,
+        diversityScore: scoreData.diversityScore,
+        interactionScore: scoreData.interactionScore,
+        holdingScore: scoreData.holdingScore,
+        cosmosBonus: scoreData.cosmosBonus,
+        unionUserBonus: scoreData.unionUserBonus
       },
       activityArray,
       estimatedVolumeUSD
     });
-
   } catch (err) {
+    console.error("Server error:", err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
 app.listen(PORT, () => {
-  console.log(`✅ Server running on http://localhost:${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
