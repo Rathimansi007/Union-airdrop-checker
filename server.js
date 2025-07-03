@@ -1,4 +1,4 @@
-// server.js
+// Updated server.js
 const express = require("express");
 const cors = require("cors");
 const fetch = require("node-fetch");
@@ -8,7 +8,7 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static(__dirname));
+app.use(express.static(__dirname)); // serve index.html in root
 
 app.post("/airdrop", async (req, res) => {
   const { wallet } = req.body;
@@ -18,81 +18,79 @@ app.post("/airdrop", async (req, res) => {
   }
 
   try {
-    const query = `
-      query GetTransfers {
-        v2_transfers(args: {
-          p_addresses_canonical: ["${wallet}"],
-          p_limit: 100
-        }) {
-          base_amount
-          base_token_meta {
-            representations {
-              name
-              symbol
-              decimals
-            }
-          }
+    // 1. Union Airdrop Query
+    const unionQuery = `
+      query {
+        v2_scores_by_pk(address: "${wallet.toLowerCase()}") {
+          estimatedU
+          volumeScore
+          diversityScore
+          interactionScore
+          holdingScore
+          cosmosBonus
+          unionUserBonus
         }
       }
     `;
 
-    const response = await fetch("https://graphql.union.build/v1/graphql", {
+    const unionRes = await fetch("https://graphql.union.build/v1/graphql", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query })
+      body: JSON.stringify({ query: unionQuery }),
     });
 
-    const json = await response.json();
-    const transfers = json.data?.v2_transfers || [];
+    const unionJson = await unionRes.json();
+    const unionData = unionJson?.data?.v2_scores_by_pk;
 
-    if (!transfers.length) {
-      return res.status(404).json({ success: false, error: "No Union transfers found for this wallet." });
+    if (!unionData) {
+      return res.status(404).json({ success: false, error: "Wallet not found on Union." });
     }
 
-    // Group by token symbol
-    const tokenMap = {};
-    for (const tx of transfers) {
-      const symbol = tx.base_token_meta.representations[0]?.symbol || "UNKNOWN";
-      const decimals = tx.base_token_meta.representations[0]?.decimals || 18;
-      const normalizedAmount = Number(tx.base_amount) / (10 ** decimals);
-      if (!tokenMap[symbol]) {
-        tokenMap[symbol] = { symbol, amount: 0 };
+    // 2. Get Token Balances from DeBank (EVM chains only)
+    const debankRes = await fetch(`https://pro-openapi.debank.com/v1/user/token_list?id=${wallet}&is_all=true`, {
+      headers: {
+        accept: "application/json",
+        // You need an API key from DeBank if rate-limiting applies:
+        // 'AccessKey': 'your_api_key_here'
       }
-      tokenMap[symbol].amount += normalizedAmount;
-    }
+    });
 
-    const activityArray = Object.values(tokenMap).map(token => ({
-      symbol: token.symbol,
-      amount: Number(token.amount.toFixed(3)),
-      usd: Number((token.amount * 1).toFixed(2)) // Placeholder $1 each
-    }));
+    const tokenList = await debankRes.json();
+
+    // Filter top tokens (optional) and build activity array
+    const activityArray = tokenList
+      .filter(t => t.price > 0 && t.amount > 0)
+      .map(t => ({
+        symbol: t.symbol,
+        amount: parseFloat(t.amount.toFixed(3)),
+        usd: parseFloat((t.amount * t.price).toFixed(2))
+      }))
+      .sort((a, b) => b.usd - a.usd)
+      .slice(0, 5); // top 5 tokens
 
     const estimatedVolumeUSD = activityArray.reduce((sum, t) => sum + t.usd, 0);
-
-    const factors = {
-      volumeScore: Math.min(100, Math.round(estimatedVolumeUSD / 100)),
-      diversityScore: Math.min(100, activityArray.length * 10),
-      interactionScore: Math.min(100, transfers.length),
-      holdingScore: 10,
-      cosmosBonus: 0,
-      unionUserBonus: 0
-    };
-
-    const estimatedU = Object.values(factors).reduce((sum, v) => sum + v, 0);
 
     res.json({
       success: true,
       wallet,
+      estimatedU: unionData.estimatedU,
+      factors: {
+        volumeScore: unionData.volumeScore,
+        diversityScore: unionData.diversityScore,
+        interactionScore: unionData.interactionScore,
+        holdingScore: unionData.holdingScore,
+        cosmosBonus: unionData.cosmosBonus,
+        unionUserBonus: unionData.unionUserBonus
+      },
       activityArray,
-      estimatedVolumeUSD,
-      factors,
-      estimatedU
+      estimatedVolumeUSD
     });
+
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`✅ Server running on http://localhost:${PORT}`);
 });
