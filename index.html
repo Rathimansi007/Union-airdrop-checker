@@ -5,85 +5,122 @@
   <title>Union Airdrop Checker</title>
   <style>
     body {
-      background-color: #0e0e0e;
-      color: #fff;
+      background-color: #0d1117;
+      color: #c9d1d9;
       font-family: Arial, sans-serif;
-      padding: 30px;
       text-align: center;
+      padding: 40px;
+    }
+    h1 {
+      color: #58a6ff;
     }
     input, button {
-      padding: 10px;
       font-size: 16px;
-      border-radius: 5px;
+      padding: 10px;
+      margin: 10px;
       border: none;
-      margin: 5px;
+      border-radius: 6px;
     }
     input {
-      width: 300px;
+      width: 320px;
     }
     button {
-      background-color: #1f6feb;
-      color: white;
+      background: #238636;
+      color: #fff;
       cursor: pointer;
     }
     button:hover {
-      background-color: #388bfd;
+      background: #2ea043;
     }
     .result {
       margin-top: 20px;
       white-space: pre-wrap;
       text-align: left;
       display: inline-block;
+      max-width: 400px;
     }
-    #sh {
+    .share {
       margin-top: 20px;
       display: none;
     }
-    #sh a {
+    .share a {
       color: #1da1f2;
       text-decoration: none;
     }
     footer {
       margin-top: 40px;
       font-size: 14px;
-      color: #aaa;
+      color: #8b949e;
+    }
+    footer a {
+      color: #58a6ff;
+      text-decoration: none;
     }
   </style>
 </head>
 <body>
-  <img src="https://union.build/logo.svg" width="100" />
+
+  <img src="https://union.build/logo.svg" width="80" alt="Union Logo" />
   <h1>🪂 Union Airdrop Checker</h1>
 
-  <input id="wallet" placeholder="Enter your wallet (0x...)" />
-  <button onclick="go()">Check Airdrop</button>
+  <input id="wallet" placeholder="Enter wallet address (0x…)" />
+  <button onclick="checkAirdrop()">Check Airdrop</button>
 
-  <div id="res" class="result"></div>
-  <div id="sh"><a id="shl" target="_blank">🔁 Share on Twitter</a></div>
+  <div class="result" id="res"></div>
+  <div class="share" id="sh">
+    <a id="shl" target="_blank">🔁 Share on X</a>
+  </div>
 
-  <footer>Made with 🧡 for the Union community</footer>
+  <footer>
+    Built with ❤️ by <a href="https://x.com/n_web3nft" target="_blank">@n_web3nft</a>
+  </footer>
 
   <script>
-    async function go() {
+    async function checkAirdrop() {
       const w = document.getElementById("wallet").value.trim().toLowerCase();
       const r = document.getElementById("res");
       const s = document.getElementById("sh");
-      r.textContent = "⏳ Checking...";
+      r.textContent = "⏳ Checking eligibility...";
       s.style.display = "none";
 
       try {
-        const j = await fetch("/api/check", {
+        const res = await fetch("/api/check", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ wallet: w })
-        }).then(r => r.json());
+        });
+        const j = await res.json();
 
         if (!j.success) {
-          r.textContent = `❌ ${j.error}`;
+          r.textContent = "❌ " + j.error;
           return;
         }
 
         const o = j.scores;
         let txt = `💼 Wallet: ${o.address}\n\n💰 Estimated Airdrop: ${o.estimated_u || 0} $U\n\n📊 Score Breakdown:\n• Volume: ${o.volume_score}\n• Diversity: ${o.diversity_score}\n• Interaction: ${o.interaction_score}\n• Holding: ${o.holding_score}\n• Cosmos Bonus: ${o.cosmos_bonus}\n• Union Bonus: ${o.union_user_bonus}`;
 
-        if (j.activity && j.activity.length > 0) {
-          txt += `\n\n📦 Transfers detected
+        if (j.activity?.length) {
+          txt += `\n\n📦 Transfers Detected:\n`;
+          j.activity.forEach(t => {
+            txt += `• ${t.amount.toFixed(4)} ${t.symbol}\n`;
+          });
+        } else {
+          txt += `\n\n📦 No recent transfer activity found.`;
+        }
+
+        r.textContent = txt;
+
+        // Share link
+        const shareText = `I just checked my $U airdrop on @unionbuild and might get ${o.estimated_u || 0} tokens! 🚀 Check yours here: https://union-airdrop-checker.onrender.com 🪂`;
+        document.getElementById("shl").href = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
+        s.style.display = "block";
+
+      } catch (e) {
+        console.error(e);
+        r.textContent = "❌ Error checking eligibility.";
+      }
+    }
+  </script>
+
+</body>
+</html>
