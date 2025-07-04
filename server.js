@@ -47,9 +47,9 @@ app.post("/api/check", async (req, res) => {
 });
 
 // Serve frontend
-app.use(express.static(path.join(__dirname, "public")));
+app.use(express.static(path.join((__dirname, "index.html"));
 app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
+  res.sendFile(path.join(__dirname, "index.html"));
 });
 
 app.listen(PORT, () => {
