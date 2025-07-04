@@ -7,7 +7,7 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 
-// ✅ API route — must be defined before static serving
+// ✅ Handle /api/check
 app.post("/api/check", async (req, res) => {
   try {
     const { wallet } = req.body;
@@ -42,24 +42,24 @@ app.post("/api/check", async (req, res) => {
 
     res.json({ scores });
   } catch (err) {
-    console.error("Error checking eligibility:", err);
+    console.error("❌ Server error:", err.message);
     res.status(500).json({ error: "Error checking eligibility" });
   }
 });
 
-// ✅ Serve all static files from root
+// ✅ Serve static files from root
 app.use(express.static(__dirname));
 
-// ✅ Serve index.html on "/"
+// ✅ Serve index.html on root
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
 });
 
-// ✅ Catch-all route
+// ✅ Catch-all for unknown routes
 app.use((req, res) => {
   res.status(404).json({ error: "Route not found" });
 });
 
 app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`🚀 Server running at http://localhost:${PORT}`);
 });
