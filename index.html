@@ -1,23 +1,94 @@
-<script>
-async function go() {
-  const w = document.getElementById("wallet").value.trim();
-  const r = document.getElementById("res"), s = document.getElementById("sh");
-  r.textContent = "⏳ Checking...";
-  s.style.display = "none";
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Union Airdrop Checker</title>
+  <style>
+    body {
+      background: #000;
+      color: #fff;
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+    }
+    input, button {
+      font-size: 16px;
+      padding: 10px;
+      margin: 5px;
+      border-radius: 6px;
+      border: none;
+    }
+    input {
+      width: 300px;
+    }
+    button {
+      background: #1f6feb;
+      cursor: pointer;
+      color: #fff;
+    }
+    button:hover {
+      background: #388bfd;
+    }
+    footer {
+      margin-top: 30px;
+      color: #888;
+      font-size: 14px;
+    }
+    a {
+      color: #58a6ff;
+      text-decoration: none;
+    }
+    .result {
+      margin-top: 20px;
+      white-space: pre-wrap;
+      text-align: left;
+    }
+    .share {
+      display: none;
+      margin-top: 10px;
+    }
+    .share a {
+      color: #1da1f2;
+      text-decoration: none;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
 
-  try {
-    const j = await fetch("/api/check", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ wallet: w })
-    }).then(r => r.json());
+  <img src="https://union.build/logo.svg" alt="Union Logo" width="100">
+  <h1>🪂 Union Airdrop Checker</h1>
+  <input id="wallet" placeholder="Enter wallet address (0x…)" />
+  <button onclick="go()">Check Airdrop</button>
+  <div class="result" id="res"></div>
+  <div class="share" id="sh"><a id="shl" target="_blank">🔁 Share on X</a></div>
+  <footer>Built with ❤️ by <a href="https://x.com/n_web3nft" target="_blank">@n_web3nft</a></footer>
 
-    if (!j.success) return r.textContent = "❌ " + j.error;
+  <script>
+    async function go() {
+      const w = document.getElementById("wallet").value.trim();
+      const r = document.getElementById("res"), s = document.getElementById("sh");
+      r.textContent = "⏳ Checking...";
+      s.style.display = "none";
 
-    const o = j.scores;
-    const airdrop = o.estimated_u ?? "0";
+      try {
+        const j = await fetch("/api/check", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ wallet: w })
+        }).then(res => res.json());
 
-    let txt = `
+        if (!j.success) {
+          r.textContent = "❌ " + j.error;
+          return;
+        }
+
+        const o = j.scores;
+        const airdrop = o.estimated_u ?? "0";
+
+        let txt = `
 💼 Wallet: ${o.address}
 💫 Estimated Airdrop: ${airdrop} $U
 
@@ -30,21 +101,24 @@ async function go() {
 • Union bonus: ${o.union_user_bonus}
 `;
 
-    if (j.activity?.length > 0) {
-      txt += `\n📦 Transfers:\n`;
-      j.activity.forEach(a => {
-        txt += `• ${a.amount.toFixed(4)} ${a.symbol}\n`;
-      });
+        if (j.activity?.length > 0) {
+          txt += `\n📦 Transfers:\n`;
+          j.activity.forEach(a => {
+            txt += `• ${a.amount.toFixed(4)} ${a.symbol}\n`;
+          });
+        }
+
+        r.textContent = txt;
+        const shareMsg = `I just estimated my $U airdrop: ${airdrop} — Check yours at union.build/check`;
+        document.getElementById("shl").href = "https://twitter.com/intent/tweet?text=" + encodeURIComponent(shareMsg);
+        s.style.display = "block";
+
+      } catch (e) {
+        console.error(e);
+        r.textContent = "❌ Error checking eligibility";
+      }
     }
+  </script>
 
-    r.textContent = txt;
-    const shareMsg = `I just estimated my $U airdrop: ${airdrop} — Check yours at union.build/check`;
-    document.getElementById("shl").href = "https://twitter.com/intent/tweet?text=" + encodeURIComponent(shareMsg);
-    s.style.display = "block";
-
-  } catch (e) {
-    console.error(e);
-    r.textContent = "❌ Error checking eligibility";
-  }
-}
-</script>
+</body>
+</html>
