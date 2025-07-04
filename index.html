@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Union Airdrop Checker</title>
   <style>
     body {
@@ -23,18 +24,14 @@
     input { width: 300px; }
     button {
       background: #1f6feb;
+      color: white;
       cursor: pointer;
-      color: #fff;
     }
     button:hover { background: #388bfd; }
     footer {
       margin-top: 30px;
       color: #888;
       font-size: 14px;
-    }
-    a {
-      color: #58a6ff;
-      text-decoration: none;
     }
     .result {
       margin-top: 20px;
@@ -43,8 +40,8 @@
       max-width: 500px;
     }
     .share {
-      display: none;
       margin-top: 10px;
+      display: none;
     }
     .share a {
       color: #1da1f2;
@@ -54,14 +51,11 @@
   </style>
 </head>
 <body>
-  <img src="https://union.build/logo.svg" alt="Union Logo" width="100" />
   <h1>🪂 Union Airdrop Checker</h1>
-  <input id="wallet" placeholder="Enter wallet address (0x…)" />
+  <input id="wallet" placeholder="Enter your wallet address (0x...)" />
   <button onclick="go()">Check Airdrop</button>
-
   <div class="result" id="res"></div>
   <div class="share" id="sh"><a id="shl" target="_blank">🔁 Share on X</a></div>
-
   <footer>Built with ❤️ by <a href="https://x.com/n_web3nft" target="_blank">@n_web3nft</a></footer>
 
   <script>
@@ -69,6 +63,7 @@
       const w = document.getElementById("wallet").value.trim();
       const r = document.getElementById("res");
       const s = document.getElementById("sh");
+      const l = document.getElementById("shl");
       r.textContent = "⏳ Checking...";
       s.style.display = "none";
 
@@ -86,8 +81,7 @@
 
         const o = j.scores;
         const a = j.activity;
-        const txt = `
-💼 Wallet: ${o.address}
+        let txt = `💼 Wallet: ${o.address}
 💰 Estimated Airdrop: ${o.estimated_u} $U
 
 📊 Score Breakdown:
@@ -96,21 +90,23 @@
 • Interaction: ${o.interaction_score}
 • Holding: ${o.holding_score}
 • Cosmos Bonus: ${o.cosmos_bonus}
-• Union Bonus: ${o.union_user_bonus}
+• Union Bonus: ${o.union_user_bonus}`;
 
-📦 Transfers detected:
-${a.length > 0 ? a.map(t => `• ${t.amount.toFixed(4)} ${t.symbol}`).join('\n') : "• None"}
-        `;
+        if (a.length) {
+          txt += `\n\n📦 Transfers detected:\n`;
+          for (const t of a) {
+            txt += `• ${t.amount.toFixed(4)} ${t.symbol}\n`;
+          }
+        }
 
         r.textContent = txt;
 
-        const shareText = `I might get ${o.estimated_u} $U from the @unionbuild airdrop! Check your allocation here: https://union-airdrop-checker.onrender.com 🪂`;
-        document.getElementById("shl").href = "https://twitter.com/intent/tweet?text=" + encodeURIComponent(shareText);
+        const shareText = `Just checked my $U airdrop: ${o.estimated_u} tokens!\nCheck yours here:\nhttps://union-airdrop-checker.onrender.com 🪂 #UnionAirdrop`;
+        l.href = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
         s.style.display = "block";
-
       } catch (e) {
-        r.textContent = "❌ Error checking eligibility";
         console.error(e);
+        r.textContent = "❌ Error checking eligibility";
       }
     }
   </script>
