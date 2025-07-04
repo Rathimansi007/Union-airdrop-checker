@@ -1,15 +1,17 @@
 const express = require("express");
 const path = require("path");
 const fetch = require("node-fetch");
+
 const app = express();
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 
-// API route
+// ✅ API route
 app.post("/api/check", async (req, res) => {
   try {
     const { wallet } = req.body;
+
     const response = await fetch("https://graphql.union.build/v1/graphql", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -39,19 +41,26 @@ app.post("/api/check", async (req, res) => {
     }
 
     res.json({ scores });
-
   } catch (err) {
     console.error("Error checking eligibility:", err);
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ error: "Error checking eligibility" });
   }
 });
 
-// Serve frontend
-app.use(express.static(path.join((__dirname, "index.html"));
+// ✅ Serve static files directly from root
+app.use(express.static(__dirname));
+
+// ✅ Serve index.html on "/"
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
 });
 
+// ✅ Handle unknown routes
+app.use((req, res) => {
+  res.status(404).json({ error: "Route not found" });
+});
+
+// ✅ Start server
 app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`Server running at http://localhost:${PORT}`);
 });
