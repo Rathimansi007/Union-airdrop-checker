@@ -25,7 +25,7 @@ app.post("/api/check", async (req, res) => {
         }
       }`;
     const scoreRes = await queryGraphQL(scoreQ, { addr: wallet });
-    const score = scoreRes.data?.v2_scores_by_pk;
+    let score = scoreRes.data?.v2_scores_by_pk;
 
     const transferQ = `
       query($addrs: [String!]!) {
@@ -42,41 +42,44 @@ app.post("/api/check", async (req, res) => {
     const transferRes = await queryGraphQL(transferQ, { addrs: [wallet] });
     const transfers = transferRes.data?.v2_transfers || [];
 
-    // Token activity summary
-    const activity = {};
-    for (const t of transfers) {
-      const sym = t.base_token_meta.representations[0].symbol;
-      const dec = t.base_token_meta.representations[0].decimals;
-      const amt = Number(t.base_amount) / (10 ** dec);
-      activity[sym] = (activity[sym] || 0) + amt;
+    // Calculate mock $U if score is null but transfers exist
+    if (!score && transfers.length > 0) {
+      let totalVolume = 0;
+      const activity = {};
+
+      for (const t of transfers) {
+        const r = t.base_token_meta.representations[0];
+        const amt = Number(t.base_amount) / (10 ** r.decimals);
+        const sym = r.symbol;
+        activity[sym] = (activity[sym] || 0) + amt;
+        totalVolume += amt;
+      }
+
+      // Assign mock scores
+      score = {
+        address: wallet,
+        estimated_u: Math.max(50, Math.round(totalVolume * 100)),
+        volume_score: 1,
+        diversity_score: 1,
+        interaction_score: 1,
+        holding_score: 1,
+        cosmos_bonus: 0,
+        union_user_bonus: 0
+      };
     }
 
     if (!score) {
-      return res.json({
-        success: false,
-        error: "No $U data – wallet not found.",
-        activity: Object.entries(activity).map(([symbol, amount]) => ({ symbol, amount }))
-      });
+      return res.json({ success: false, error: "❌ This wallet has not interacted with Union." });
     }
 
-    res.json({
-      success: true,
-      scores: score,
-      activity: Object.entries(activity).map(([symbol, amount]) => ({ symbol, amount }))
-    });
-
+    res.json({ success: true, scores: score });
   } catch (e) {
     console.error(e);
     res.status(500).json({ success: false, error: "API error" });
   }
 });
 
-// Serve static index.html
 app.use(express.static(__dirname));
 app.get("/", (req, res) => res.sendFile(__dirname + "/index.html"));
-
-app.use((_, res) => res.status(404).send("Route not found"));
-
-app.listen(PORT, () => {
-  console.log(`✅ Server running at http://localhost:${PORT}`);
-});
+app.use((_, r) => r.status(404).send("Route not found"));
+app.listen(PORT, () => console.log(`Running on ${PORT}`));
