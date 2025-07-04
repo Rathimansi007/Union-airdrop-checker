@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Union Airdrop Checker</title>
   <style>
     body {
@@ -57,7 +57,6 @@
   </style>
 </head>
 <body>
-
   <img src="https://union.build/logo.svg" alt="Union Logo" width="100">
   <h1>🪂 Union Airdrop Checker</h1>
   <input id="wallet" placeholder="Enter wallet address (0x…)" />
@@ -69,7 +68,8 @@
   <script>
     async function go() {
       const w = document.getElementById("wallet").value.trim();
-      const r = document.getElementById("res"), s = document.getElementById("sh");
+      const r = document.getElementById("res");
+      const s = document.getElementById("sh");
       r.textContent = "⏳ Checking...";
       s.style.display = "none";
 
@@ -81,16 +81,21 @@
         }).then(res => res.json());
 
         if (!j.success) {
-          r.textContent = "❌ " + j.error;
+          let err = "❌ " + j.error;
+          if (j.activity?.length) {
+            err += "\n\n📦 Transfers detected:\n";
+            j.activity.forEach(a => {
+              err += `• ${a.amount.toFixed(4)} ${a.symbol}\n`;
+            });
+          }
+          r.textContent = err;
           return;
         }
 
         const o = j.scores;
-        const airdrop = o.estimated_u ?? "0";
-
-        let txt = `
+        const txt = `
 💼 Wallet: ${o.address}
-💫 Estimated Airdrop: ${airdrop} $U
+💫 Estimated $U: ${o.estimated_u}
 
 📊 Scores:
 • Volume: ${o.volume_score}
@@ -100,25 +105,17 @@
 • Cosmos bonus: ${o.cosmos_bonus}
 • Union bonus: ${o.union_user_bonus}
 `;
-
-        if (j.activity?.length > 0) {
-          txt += `\n📦 Transfers:\n`;
-          j.activity.forEach(a => {
-            txt += `• ${a.amount.toFixed(4)} ${a.symbol}\n`;
-          });
-        }
-
         r.textContent = txt;
-        const shareMsg = `I just estimated my $U airdrop: ${airdrop} — Check yours at union.build/check`;
-        document.getElementById("shl").href = "https://twitter.com/intent/tweet?text=" + encodeURIComponent(shareMsg);
+        const link = encodeURIComponent(`I just estimated my $U allocation: ${o.estimated_u} — Check yours at union.build/check`);
+        const href = `https://twitter.com/intent/tweet?text=${link}`;
+        document.getElementById("shl").href = href;
         s.style.display = "block";
 
       } catch (e) {
-        console.error(e);
         r.textContent = "❌ Error checking eligibility";
+        console.error(e);
       }
     }
   </script>
-
 </body>
 </html>
