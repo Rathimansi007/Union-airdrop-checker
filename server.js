@@ -24,18 +24,24 @@ app.post("/api/check", async (req, res) => {
         variables: { addr: wallet.toLowerCase() }
       })
     });
+
     const j = await resp.json();
-    if (!j.data?.v2_scores_by_pk) {
-      return res.status(404).json({ error: "Wallet not found on Union." });
+
+    if (!j.data?.v2_scores_by_pk || j.data.v2_scores_by_pk.estimated_u === 0) {
+      return res.status(404).json({ 
+        error: "This wallet has not interacted with Union or is not eligible for $U." 
+      });
     }
+
     res.json({ success: true, scores: j.data.v2_scores_by_pk });
   } catch (e) {
     console.error(e);
-    res.status(500).json({ error: "Eligibility check failed" });
+    res.status(500).json({ error: "Eligibility check failed." });
   }
 });
 
-app.get("/", (req, res) => res.send(`<!DOCTYPE html>
+app.get("/", (req, res) =>
+  res.send(`<!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8">
 <title>Union Airdrop Checker</title>
 <style>
@@ -70,7 +76,9 @@ async function go(){
     const j = await fetch("/api/check", {
       method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({wallet:w})
     }).then(r=>r.json());
-    if(!j.success){ return r.textContent="❌ "+j.error; }
+    if(!j.success){
+      return r.textContent="❌ "+j.error;
+    }
     const o=j.scores, txt=\`
 💼 Wallet: \${o.address}
 💫 Estimated $U: \${o.estimated_u}
@@ -85,14 +93,16 @@ async function go(){
 \`;
     r.textContent=txt;
     const link = encodeURIComponent(\`I just estimated my $U allocation: \${o.estimated_u} — Check yours at union.build/check\`);
-    const href = \`https://twitter.com/intent/tweet?text=\${link}\`;
-    document.getElementById("shl").href=href;
+    document.getElementById("shl").href=\`https://twitter.com/intent/tweet?text=\${link}\`;
     s.style.display="block";
-  } catch(e){ r.textContent="❌ Error checking eligibility"; console.error(e); }
+  } catch(e){
+    r.textContent="❌ Error checking eligibility";
+    console.error(e);
+  }
 }
 </script>
-</body></html>`));
+</body></html>`)
+);
 
 app.use((req,res)=>res.status(404).send("Route not found"));
-
 app.listen(PORT, ()=>console.log("Running on port "+PORT));
