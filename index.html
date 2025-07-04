@@ -1,69 +1,70 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>Union Airdrop Checker</title>
   <style>
-    body { background:#000; color:#fff; font-family:sans-serif; text-align:center; padding:20px; }
-    input, button { font-size:16px; padding:10px; border-radius:6px; margin:5px; }
+    body { background:#000;color:#fff;font-family:sans-serif;display:flex;flex-direction:column;align-items:center;padding:20px; }
+    input, button { font-size:16px;padding:10px;margin:5px;border-radius:6px;border:none; }
     input { width: 300px; }
-    button { background:#1f6feb; color:#fff; border:none; cursor:pointer; }
-    .result { white-space:pre-wrap; margin-top:20px; }
-    .share { margin-top:10px; display:none; }
-    footer { margin-top:30px; color:#888; font-size:14px; }
-    a { color:#58a6ff; text-decoration:none; }
+    button { background:#1f6feb;cursor:pointer;color:#fff; }
+    button:hover { background:#388bfd; }
+    footer { margin-top:30px;color:#888;font-size:14px; }
+    a { color:#58a6ff;text-decoration:none; }
+    .result { margin-top:20px;white-space:pre-wrap;text-align:left; }
+    .share { display:none;margin-top:10px; }
   </style>
 </head>
 <body>
-  <img src="https://union.build/logo.svg" alt="Union Logo" width="80" />
+  <img src="https://union.build/logo.svg" alt="Union Logo" width="100">
   <h1>🪂 Union Airdrop Checker</h1>
-  <input id="wallet" placeholder="Enter wallet address (0x...)" />
+  <input id="wallet" placeholder="Enter wallet address (0x…)" />
   <button onclick="go()">Check Airdrop</button>
   <div class="result" id="res"></div>
   <div class="share" id="sh"><a id="shl" target="_blank">🔁 Share on X</a></div>
   <footer>Built with ❤️ by <a href="https://x.com/n_web3nft" target="_blank">@n_web3nft</a></footer>
 
-  <script>
-    async function go() {
-      const w = document.getElementById("wallet").value.trim().toLowerCase();
-      const r = document.getElementById("res"), s = document.getElementById("sh");
-      r.textContent = "⏳ Checking..."; s.style.display = "none";
+<script>
+async function go() {
+  const w = document.getElementById("wallet").value.trim();
+  const r = document.getElementById("res"), s = document.getElementById("sh");
+  r.textContent = "⏳ Checking..."; s.style.display = "none";
 
-      try {
-        const j = await fetch("/api/check", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ wallet: w })
-        }).then(r => r.json());
+  try {
+    const j = await fetch("/api/check", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ wallet: w })
+    }).then(r => r.json());
 
-        if (!j.success) {
-          r.textContent = "❌ " + j.error;
-          return;
-        }
+    if (!j.success) return r.textContent = "❌ " + j.error;
 
-        const o = j.scores;
-        const text = `
-💼 Wallet: ${o.address}
-💰 Estimated Airdrop: ${o.estimated_u} $U
+    let txt = `💼 Wallet: ${w}\n`;
+    if (j.scores) {
+      const o = j.scores;
+      txt += `💰 Estimated Airdrop: ${o.estimated_u} $U\n\n📊 Score Breakdown:\n• Volume: ${o.volume_score}\n• Diversity: ${o.diversity_score}\n• Interaction: ${o.interaction_score}\n• Holding: ${o.holding_score}\n• Cosmos Bonus: ${o.cosmos_bonus}\n• Union Bonus: ${o.union_user_bonus}\n`;
+    } else {
+      txt += `ℹ️ No $U score found, but wallet has interacted with Union.\n`;
+    }
 
-📊 Scores:
-• Volume: ${o.volume_score}
-• Diversity: ${o.diversity_score}
-• Interaction: ${o.interaction_score}
-• Holding: ${o.holding_score}
-• Cosmos Bonus: ${o.cosmos_bonus}
-• Union Bonus: ${o.union_user_bonus}
-        `;
-        r.textContent = text;
-
-        const shareText = `Just estimated my Union $U airdrop: ${o.estimated_u} $U 🎉\nCheck yours at https://union-airdrop-checker.onrender.com`;
-        document.getElementById("shl").href = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
-        s.style.display = "block";
-      } catch (e) {
-        console.error(e);
-        r.textContent = "❌ Error checking eligibility";
+    if (j.activity.length > 0) {
+      txt += `\n📦 Transfers detected:\n`;
+      for (const a of j.activity) {
+        txt += `• ${a.amount.toFixed(4)} ${a.symbol}\n`;
       }
     }
-  </script>
+
+    r.textContent = txt;
+
+    const shareText = `Just estimated my $U airdrop from @unionbuild 🪂\nCheck your allocation here: https://union-airdrop-checker.onrender.com`;
+    document.getElementById("shl").href = "https://twitter.com/intent/tweet?text=" + encodeURIComponent(shareText);
+    s.style.display = "block";
+
+  } catch (e) {
+    console.error(e);
+    r.textContent = "❌ Error checking eligibility";
+  }
+}
+</script>
 </body>
 </html>
