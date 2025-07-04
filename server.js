@@ -7,7 +7,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
-app.use(express.static(__dirname)); // serve static files from root
+app.use(express.static(__dirname)); 
 
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
@@ -36,11 +36,9 @@ app.post("/api/check", async (req, res) => {
         variables: { addr: wallet }
       })
     });
-    const data = await resp.json();
-    const scores = data.data?.v2_scores_by_pk;
-
-    if (!scores) return res.json({ success: false, error: "No $U data – wallet not found." });
-
+    const j = await resp.json();
+    const scores = j.data?.v2_scores_by_pk;
+    if (!scores) return res.json({ success: false, error: "Wallet not found on Union." });
     res.json({ success: true, scores });
   } catch (err) {
     console.error(err);
@@ -48,6 +46,5 @@ app.post("/api/check", async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Running on http://localhost:${PORT}`);
-});
+app.listen(PORT, () => console.log(`Listening on port ${PORT}`));
+
