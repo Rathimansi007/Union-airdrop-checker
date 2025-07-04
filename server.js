@@ -2,11 +2,11 @@ const express = require("express");
 const path = require("path");
 const fetch = require("node-fetch");
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8080;
 
 app.use(express.json());
 
-// ✅ Your API route for /api/check
+// API route
 app.post("/api/check", async (req, res) => {
   try {
     const { wallet } = req.body;
@@ -41,24 +41,18 @@ app.post("/api/check", async (req, res) => {
 
     res.json({ scores });
   } catch (err) {
-    console.error("❌ Server error:", err);
-    res.status(500).json({ error: "Server error" });
+    console.error("Error checking eligibility:", err);
+    res.status(500).json({ error: "Error checking eligibility" });
   }
 });
 
-// ✅ Serve static files (like index.html)
-app.use(express.static(path.join(__dirname)));
+// Serve static HTML from /public
+app.use(express.static(path.join(__dirname, "public")));
 
-// ✅ Serve index.html at root
 app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "index.html"));
-});
-
-// ✅ 404 fallback
-app.use((req, res) => {
-  res.status(404).json({ error: "Route not found" });
+  res.sendFile(path.join(__dirname, "public/index.html"));
 });
 
 app.listen(PORT, () => {
-  console.log(`✅ Server running at http://localhost:${PORT}`);
+  console.log(`✅ Server running on http://localhost:${PORT}`);
 });
