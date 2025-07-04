@@ -1,77 +1,50 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Union Airdrop Checker</title>
-  <style>
-    body {
-      background-color: black;
-      color: white;
-      font-family: Arial, sans-serif;
-      text-align: center;
-      margin-top: 50px;
-    }
-    input {
-      padding: 10px;
-      width: 400px;
-      border-radius: 5px;
-      border: none;
-      font-size: 16px;
-    }
-    button {
-      padding: 10px 20px;
-      margin-top: 10px;
-      font-size: 16px;
-      border: none;
-      background-color: #3366ff;
-      color: white;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-    .result {
-      margin-top: 20px;
-      font-size: 18px;
-    }
-    .error {
-      color: red;
-    }
-  </style>
-</head>
-<body>
-  <img src="https://union.build/logo.svg" alt="Union Logo" width="100"/>
-  <h1>🎈 Union Airdrop Checker</h1>
+<script>
+async function go() {
+  const w = document.getElementById("wallet").value.trim();
+  const r = document.getElementById("res"), s = document.getElementById("sh");
+  r.textContent = "⏳ Checking...";
+  s.style.display = "none";
 
-  <input type="text" id="wallet" placeholder="Enter your wallet address" />
-  <br />
-  <button onclick="checkAirdrop()">Check Airdrop</button>
+  try {
+    const j = await fetch("/api/check", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ wallet: w })
+    }).then(r => r.json());
 
-  <div id="result" class="result"></div>
+    if (!j.success) return r.textContent = "❌ " + j.error;
 
-  <script>
-    async function checkAirdrop() {
-      const wallet = document.getElementById("wallet").value.trim();
-      const result = document.getElementById("result");
-      result.innerHTML = "Checking...";
+    const o = j.scores;
+    const airdrop = o.estimated_u ?? "0";
 
-      try {
-        const response = await fetch("https://union-airdrop-checker.onrender.com/api/check", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ wallet })
-        });
+    let txt = `
+💼 Wallet: ${o.address}
+💫 Estimated Airdrop: ${airdrop} $U
 
-        const data = await response.json();
+📊 Scores:
+• Volume: ${o.volume_score}
+• Diversity: ${o.diversity_score}
+• Interaction: ${o.interaction_score}
+• Holding: ${o.holding_score}
+• Cosmos bonus: ${o.cosmos_bonus}
+• Union bonus: ${o.union_user_bonus}
+`;
 
-        if (response.ok) {
-          result.innerHTML = `✅ Estimated Airdrop: <strong>${data.estimatedAirdrop}</strong> $U`;
-        } else {
-          result.innerHTML = `❌ ${data.error || "Failed to check eligibility"}`;
-        }
-      } catch (error) {
-        result.innerHTML = `<span class="error">❌ Failed to check eligibility<br/>${error.message}</span>`;
-      }
+    if (j.activity?.length > 0) {
+      txt += `\n📦 Transfers:\n`;
+      j.activity.forEach(a => {
+        txt += `• ${a.amount.toFixed(4)} ${a.symbol}\n`;
+      });
     }
-  </script>
-</body>
-</html>
+
+    r.textContent = txt;
+    const shareMsg = `I just estimated my $U airdrop: ${airdrop} — Check yours at union.build/check`;
+    document.getElementById("shl").href = "https://twitter.com/intent/tweet?text=" + encodeURIComponent(shareMsg);
+    s.style.display = "block";
+
+  } catch (e) {
+    console.error(e);
+    r.textContent = "❌ Error checking eligibility";
+  }
+}
+</script>
