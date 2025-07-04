@@ -1,66 +1,40 @@
-const express = require("express");
-const path = require("path");
-const fetch = require("node-fetch");
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Union Airdrop Checker</title>
+  <style>
+    body { font-family: Arial; background: #000; color: #fff; text-align: center; padding: 50px; }
+    input, button { padding: 10px; font-size: 16px; }
+    .result { margin-top: 20px; font-size: 18px; }
+  </style>
+</head>
+<body>
+  <img src="https://union.build/logo.svg" alt="Union" width="100" />
+  <h1>🎈 Union Airdrop Checker</h1>
+  <input id="wallet" placeholder="Enter wallet address" size="45" />
+  <button onclick="checkAirdrop()">Check Airdrop</button>
+  <div class="result" id="result"></div>
 
-const app = express();
-const PORT = process.env.PORT || 10000;
+  <script>
+    async function checkAirdrop() {
+      const wallet = document.getElementById("wallet").value;
+      const result = document.getElementById("result");
+      result.textContent = "Checking...";
 
-
-app.use(express.json());
-
-// ✅ Handle /api/check
-app.post("/api/check", async (req, res) => {
-  try {
-    const { wallet } = req.body;
-
-    const response = await fetch("https://graphql.union.build/v1/graphql", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        query: `
-          query {
-            v2_scores_by_pk(address: "${wallet.toLowerCase()}") {
-              address
-              estimated_u
-              volume_score
-              diversity_score
-              interaction_score
-              holding_score
-              cosmos_bonus
-              union_user_bonus
-            }
-          }
-        `
-      })
-    });
-
-    const result = await response.json();
-    const scores = result?.data?.v2_scores_by_pk;
-
-    if (!scores) {
-      return res.status(404).json({ error: "Wallet not found on Union." });
+      try {
+        const res = await fetch("/api/check", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ wallet })
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        result.innerHTML = `✅ Estimated tokens: ${data.estimatedTokens}<br>🎯 Volume Score: ${data.volumeScore}<br>🤝 Interaction Score: ${data.interactionScore}`;
+      } catch (err) {
+        result.innerHTML = `❌ Failed to check eligibility<br><small>${err.message}</small>`;
+      }
     }
-
-    res.json({ scores });
-  } catch (err) {
-    console.error("❌ Server error:", err.message);
-    res.status(500).json({ error: "Error checking eligibility" });
-  }
-});
-
-// ✅ Serve static files from root
-app.use(express.static(__dirname));
-
-// ✅ Serve index.html on root
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "index.html"));
-});
-
-// ✅ Catch-all for unknown routes
-app.use((req, res) => {
-  res.status(404).json({ error: "Route not found" });
-});
-
-app.listen(PORT, () => {
-  console.log(`🚀 Server running at http://localhost:${PORT}`);
-});
+  </script>
+</body>
+</html>
