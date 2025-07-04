@@ -10,7 +10,6 @@ app.use(express.json());
 app.post("/api/check", async (req, res) => {
   try {
     const { wallet } = req.body;
-
     const response = await fetch("https://graphql.union.build/v1/graphql", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -40,18 +39,19 @@ app.post("/api/check", async (req, res) => {
     }
 
     res.json({ scores });
+
   } catch (err) {
     console.error("Error checking eligibility:", err);
-    res.status(500).json({ error: "Error checking eligibility" });
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// Serve static HTML from /public
+// Serve frontend
 res.sendFile(path.join(__dirname, "index.html"));
 app.get("/", (req, res) => {
-  res.sendFile(path.join((__dirname, "index.html"));
+  res.sendFile(path.join(__dirname, "index.html")););
 });
 
 app.listen(PORT, () => {
-  console.log(`✅ Server running on http://localhost:${PORT}`);
+  console.log(`Server running on http://localhost:${PORT}`);
 });
