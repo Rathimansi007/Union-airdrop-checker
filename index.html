@@ -1,73 +1,72 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>Union Airdrop Checker</title>
   <style>
     body {
-      background-color: #000;
+      background-color: #0e0e0e;
       color: #fff;
-      font-family: sans-serif;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 40px;
+      font-family: Arial, sans-serif;
+      padding: 30px;
+      text-align: center;
     }
     input, button {
-      font-size: 16px;
       padding: 10px;
-      margin: 5px;
-      border-radius: 6px;
+      font-size: 16px;
+      border-radius: 5px;
       border: none;
+      margin: 5px;
     }
     input {
       width: 300px;
     }
     button {
-      background: #1f6feb;
+      background-color: #1f6feb;
+      color: white;
       cursor: pointer;
-      color: #fff;
     }
     button:hover {
-      background: #388bfd;
+      background-color: #388bfd;
     }
     .result {
       margin-top: 20px;
       white-space: pre-wrap;
       text-align: left;
-      max-width: 600px;
+      display: inline-block;
     }
-    .share {
+    #sh {
+      margin-top: 20px;
       display: none;
-      margin-top: 10px;
     }
-    .share a {
+    #sh a {
       color: #1da1f2;
       text-decoration: none;
-      font-size: 14px;
     }
     footer {
-      margin-top: 30px;
-      color: #888;
+      margin-top: 40px;
       font-size: 14px;
+      color: #aaa;
     }
   </style>
 </head>
 <body>
-
-  <img src="https://union.build/logo.svg" alt="Union Logo" width="100" />
+  <img src="https://union.build/logo.svg" width="100" />
   <h1>🪂 Union Airdrop Checker</h1>
-  <input id="wallet" placeholder="Enter wallet address (0x…)" />
+
+  <input id="wallet" placeholder="Enter your wallet (0x...)" />
   <button onclick="go()">Check Airdrop</button>
-  <div class="result" id="res"></div>
-  <div class="share" id="sh"><a id="shl" target="_blank">🔁 Share on X</a></div>
+
+  <div id="res" class="result"></div>
+  <div id="sh"><a id="shl" target="_blank">🔁 Share on Twitter</a></div>
 
   <footer>Made with 🧡 for the Union community</footer>
 
   <script>
     async function go() {
-      const w = document.getElementById("wallet").value.trim();
-      const r = document.getElementById("res"), s = document.getElementById("sh");
+      const w = document.getElementById("wallet").value.trim().toLowerCase();
+      const r = document.getElementById("res");
+      const s = document.getElementById("sh");
       r.textContent = "⏳ Checking...";
       s.style.display = "none";
 
@@ -79,37 +78,12 @@
         }).then(r => r.json());
 
         if (!j.success) {
-          return r.textContent = "❌ " + j.error;
+          r.textContent = `❌ ${j.error}`;
+          return;
         }
 
         const o = j.scores;
-        const txt = `
-💼 Wallet: ${o.address}
-💰 Estimated Airdrop: ${o.estimated_u} $U
+        let txt = `💼 Wallet: ${o.address}\n\n💰 Estimated Airdrop: ${o.estimated_u || 0} $U\n\n📊 Score Breakdown:\n• Volume: ${o.volume_score}\n• Diversity: ${o.diversity_score}\n• Interaction: ${o.interaction_score}\n• Holding: ${o.holding_score}\n• Cosmos Bonus: ${o.cosmos_bonus}\n• Union Bonus: ${o.union_user_bonus}`;
 
-📊 Score Breakdown:
-• Volume: ${o.volume_score}
-• Diversity: ${o.diversity_score}
-• Interaction: ${o.interaction_score}
-• Holding: ${o.holding_score}
-• Cosmos Bonus: ${o.cosmos_bonus}
-• Union Bonus: ${o.union_user_bonus}
-        `;
-
-        r.textContent = txt;
-
-        const shareText = `Just checked my potential $U airdrop on @unionbuild 🚀\nI might get ${o.estimated_u} $U!\nCheck yours here: https://union-airdrop-checker.onrender.com 🪂`;
-        const tweetLink = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
-        const shareBtn = document.getElementById("shl");
-        shareBtn.href = tweetLink;
-        s.style.display = "block";
-
-      } catch (e) {
-        r.textContent = "❌ Error checking eligibility";
-        console.error(e);
-      }
-    }
-  </script>
-
-</body>
-</html>
+        if (j.activity && j.activity.length > 0) {
+          txt += `\n\n📦 Transfers detected
